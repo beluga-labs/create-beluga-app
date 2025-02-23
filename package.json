@@ -1,6 +1,6 @@
 {
   "name": "create-beluga-app",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "CLI tool to create a new Beluga Stack 2025 app",
   "author": "beluga – Daniel Baumert",
   "main": "src/index.js",

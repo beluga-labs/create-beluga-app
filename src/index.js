@@ -32,7 +32,7 @@ figlet.text(
 
 program
   .version('1.0.0')
-  .description('Create a new Beluga Stack 2025 app')
+  .description('Create a new beluga stack ONE app')
   .argument('<name>', 'Project name')
   .action(async (name) => {
     console.log(chalk.green(`Creating a new project called ${name}`));
@@ -51,7 +51,7 @@ program
     ]);
 
     // Klonen des Haupt-Repositories
-    const repoUrl = 'https://github.com/beluga-digital/beluga-stack-2025';
+    const repoUrl = 'https://github.com/beluga-digital/beluga-stack-ONE';
     console.log(chalk.cyan(`Cloning the repository from ${repoUrl}...`));
     execSync(`git clone ${repoUrl} ${name}`);
 

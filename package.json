@@ -1,14 +1,13 @@
 {
   "name": "create-beluga-app",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "CLI tool to create a new beluga stack 2025 app",
-  "type": "module",
-  "main": "src/index.js",
+  "main": "src/index.mjs",
   "bin": {
     "create-beluga-app": "./bin/create-beluga-app"
   },
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.mjs"
   },
   "repository": {
     "type": "git",

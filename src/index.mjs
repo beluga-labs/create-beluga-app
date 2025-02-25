@@ -109,7 +109,7 @@ program
         fs.cpSync(templateDir, targetDir, { recursive: true });
       }
 
-      const packageJsonPath = path.join(targetDir, "package.json");
+      const packageJsonPath = path.join(name, "package.json");
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 
       const { packageManager } = await inquirer.prompt([
@@ -142,6 +142,7 @@ program
         packageManagerVersion = `bun@${stdout.trim()}`;
       }
 
+      packageJson.name = name;
       packageJson.packageManager = packageManagerVersion;
       fs.writeFileSync(
         packageJsonPath,

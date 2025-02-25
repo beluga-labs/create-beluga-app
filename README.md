@@ -1,10 +1,14 @@
 # create-beluga-app
 
-A CLI tool for creating a new project based on the Beluga Stack 2025 repository.
+A CLI tool for creating a new project based on the beluga templates repository and beluga stack.
 
-## Installation
+## Install
 
-Install the tool globally via npm:
+Start a new project:
 
 ```bash
-npm install -g create-beluga-app
+# pnpm
+pnpm dlx create-beluga-app
+# npm
+npx create-beluga-app
+```

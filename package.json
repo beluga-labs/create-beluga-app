@@ -2,6 +2,7 @@
   "name": "create-beluga-app",
   "version": "0.1.1",
   "description": "CLI tool to create a new beluga stack 2025 app",
+  "type": "module",
   "main": "src/index.js",
   "bin": {
     "create-beluga-app": "./bin/create-beluga-app"
@@ -11,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/beluga-digital/create-beluga-app"
+    "url": "git+https://github.com/beluga-labs/create-beluga-app"
   },
   "keywords": [
     "cli",
@@ -22,7 +23,7 @@
     "beluga"
   ],
   "bugs": {
-    "url": "https://github.com/beluga-digital/create-beluga-app/issues"
+    "url": "https://github.com/beluga-labs/create-beluga-app/issues"
   },
   "author": "beluga – Daniel Baumert",
   "license": "MIT",

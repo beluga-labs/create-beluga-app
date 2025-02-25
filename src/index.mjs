@@ -32,7 +32,7 @@ figlet.text(
 );
 
 program
-  .version("0.2.1")
+  .version("0.2.2")
   .description("Create a new beluga stack app")
   .argument("<name>", "Project name")
   .action(async (name) => {

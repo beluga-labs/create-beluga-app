@@ -45,7 +45,7 @@ program
           name: "appType",
           message: "Which type of app would you like to create?",
           choices: [
-            { name: "Beluga Stack ONE", value: "beluga-stack-one" },
+            { name: "beluga stack ONE", value: "beluga-stack-one" },
             { name: "NextJS", value: "nextjs" },
             { name: "Vite", value: "vite" },
             { name: "tsup", value: "tsup" },
@@ -82,9 +82,33 @@ program
       console.log(chalk.cyan(`Cloning the repository from ${repoUrl}...`));
       await execPromise(`git clone ${repoUrl} ${name}`);
 
-      fs.cpSync(templateDir, targetDir, { recursive: true });
+      if (appType !== "beluga-stack-one") {
+        // Lösche alle Dateien auf der Root-Ebene außer dem templates-Ordner
+        const rootFiles = fs.readdirSync(name);
+        for (const file of rootFiles) {
+          if (file !== "templates" && file !== ".git") {
+            fs.rmSync(path.join(name, file), { recursive: true, force: true });
+          }
+        }
 
-      const packageJsonPath = path.join(name, "package.json");
+        // Verschiebe den Inhalt des gewählten Templates ins Root-Verzeichnis
+        const templateContent = fs.readdirSync(templateDir);
+        for (const item of templateContent) {
+          fs.cpSync(path.join(templateDir, item), path.join(targetDir, item), {
+            recursive: true,
+          });
+        }
+
+        // Lösche den templates-Ordner
+        fs.rmSync(path.join(name, "templates"), {
+          recursive: true,
+          force: true,
+        });
+      } else {
+        fs.cpSync(templateDir, targetDir, { recursive: true });
+      }
+
+      const packageJsonPath = path.join(targetDir, "package.json");
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 
       const { packageManager } = await inquirer.prompt([
@@ -93,15 +117,31 @@ program
           name: "packageManager",
           message: "Which package manager would you like to use?",
           choices: [
+            { name: "pnpm", value: "pnpm" },
             { name: "npm", value: "npm" },
             { name: "yarn", value: "yarn" },
-            { name: "pnpm", value: "pnpm" },
             { name: "bun", value: "bun" },
           ],
         },
       ]);
 
-      packageJson.packageManager = packageManager;
+      // Ermitteln der Version des Paketmanagers
+      let packageManagerVersion = "";
+      if (packageManager === "pnpm") {
+        const { stdout } = await execPromise("pnpm --version");
+        packageManagerVersion = `pnpm@${stdout.trim()}`;
+      } else if (packageManager === "npm") {
+        const { stdout } = await execPromise("npm --version");
+        packageManagerVersion = `npm@${stdout.trim()}`;
+      } else if (packageManager === "yarn") {
+        const { stdout } = await execPromise("yarn --version");
+        packageManagerVersion = `yarn@${stdout.trim()}`;
+      } else if (packageManager === "bun") {
+        const { stdout } = await execPromise("bun --version");
+        packageManagerVersion = `bun@${stdout.trim()}`;
+      }
+
+      packageJson.packageManager = packageManagerVersion;
       fs.writeFileSync(
         packageJsonPath,
         JSON.stringify(packageJson, null, 2),
@@ -111,9 +151,8 @@ program
       console.log(
         chalk.cyan(`Installing dependencies with ${packageManager}...`)
       );
-      await execPromise(`cd ${name} && ${packageManager} install`);
+      await execPromise(`cd ${targetDir} && ${packageManager} install`);
 
-      fs.rmSync(path.join(name, "templates"), { recursive: true, force: true });
       fs.rmSync(path.join(name, ".git"), { recursive: true, force: true });
 
       await execPromise(`cd ${name} && git init`);

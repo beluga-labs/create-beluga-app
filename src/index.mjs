@@ -2,6 +2,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import figlet from "figlet";
 import inquirer from "inquirer";
+import { spawn } from "child_process";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
@@ -10,26 +11,38 @@ import * as path from "path";
 const execPromise = promisify(exec);
 const program = new Command();
 
-const text = "beluga stack";
+const figletPromise = (text, options) => {
+  return new Promise((resolve, reject) => {
+    figlet.text(text, options, (err, data) => {
+      if (err) reject(err);
+      else resolve(data);
+    });
+  });
+};
 
-figlet.text(
-  text,
-  {
-    font: "Slant",
-    horizontalLayout: "default",
-    verticalLayout: "default",
-    width: 80,
-    whitespaceBreak: false,
-  },
-  function (err, data) {
-    if (err) {
-      console.log("Something went wrong...");
-      console.dir(err);
-      return;
-    }
-    console.log(data);
-  }
-);
+const executeCommand = (command, args, cwd) => {
+  return new Promise((resolve, reject) => {
+    console.log(chalk.dim(`$ ${command} ${args.join(" ")}`));
+
+    const childProcess = spawn(command, args, {
+      cwd,
+      stdio: "inherit",
+      shell: true,
+    });
+
+    childProcess.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed with exit code ${code}`));
+      }
+    });
+
+    childProcess.on("error", (error) => {
+      reject(error);
+    });
+  });
+};
 
 program
   .version("0.2.3")
@@ -37,15 +50,28 @@ program
   .argument("<name>", "Project name")
   .action(async (name) => {
     try {
-      console.log(chalk.green(`Creating a new project called ${name}`));
+      // Banner vor allem anderen anzeigen
+      const banner = await figletPromise("beluga stack", {
+        font: "Slant",
+        horizontalLayout: "default",
+        verticalLayout: "default",
+        width: 80,
+        whitespaceBreak: false,
+      });
+
+      console.log(banner);
+      console.log(chalk.cyan("✨ Welcome to Beluga Stack CLI ✨"));
+      console.log(
+        chalk.green(`🚀 Creating a new project called ${chalk.bold(name)}`)
+      );
 
       const { appType } = await inquirer.prompt([
         {
           type: "list",
           name: "appType",
-          message: "Which type of app would you like to create?",
+          message: "📋 Which type of app would you like to create?",
           choices: [
-            { name: "beluga stack ONE", value: "beluga-stack-one" },
+            { name: "Beluga Stack ONE", value: "beluga-stack-one" },
             // coming soon
             // { name: "NextJS", value: "nextjs" },
             // { name: "Vite", value: "vite" },
@@ -63,7 +89,7 @@ program
           {
             type: "list",
             name: "cmsOption",
-            message: "Would you like to include Payload CMS?",
+            message: "🔧 Would you like to include Payload CMS?",
             choices: [
               { name: "With Payload CMS", value: "nextjs-payload" },
               { name: "Without Payload CMS", value: "nextjs" },
@@ -80,10 +106,14 @@ program
         targetDir = name; // Kopiere den Inhalt direkt ins Root-Verzeichnis
       }
 
-      console.log(chalk.cyan(`Cloning the repository from ${repoUrl}...`));
-      await execPromise(`git clone ${repoUrl} ${name}`);
+      console.log(
+        chalk.cyan(`📥 Cloning the repository from ${chalk.bold(repoUrl)}...`)
+      );
+      await executeCommand("git", ["clone", repoUrl, name], process.cwd());
+      console.log(chalk.green(`✅ Repository cloned successfully`));
 
       if (appType !== "beluga-stack-one") {
+        console.log(chalk.cyan(`🔄 Processing template files...`));
         // Lösche alle Dateien auf der Root-Ebene außer dem templates-Ordner
         const rootFiles = fs.readdirSync(name);
         for (const file of rootFiles) {
@@ -106,8 +136,10 @@ program
           force: true,
         });
       } else {
+        console.log(chalk.cyan(`📋 Setting up template structure...`));
         fs.cpSync(templateDir, targetDir, { recursive: true });
       }
+      console.log(chalk.green(`✅ Template structure set up successfully`));
 
       const packageJsonPath = path.join(name, "package.json");
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
@@ -116,7 +148,7 @@ program
         {
           type: "list",
           name: "packageManager",
-          message: "Which package manager would you like to use?",
+          message: "📦 Which package manager would you like to use?",
           choices: [
             { name: "pnpm", value: "pnpm" },
             { name: "npm", value: "npm" },
@@ -128,18 +160,15 @@ program
 
       // Ermitteln der Version des Paketmanagers
       let packageManagerVersion = "";
-      if (packageManager === "pnpm") {
-        const { stdout } = await execPromise("pnpm --version");
-        packageManagerVersion = `pnpm@${stdout.trim()}`;
-      } else if (packageManager === "npm") {
-        const { stdout } = await execPromise("npm --version");
-        packageManagerVersion = `npm@${stdout.trim()}`;
-      } else if (packageManager === "yarn") {
-        const { stdout } = await execPromise("yarn --version");
-        packageManagerVersion = `yarn@${stdout.trim()}`;
-      } else if (packageManager === "bun") {
-        const { stdout } = await execPromise("bun --version");
-        packageManagerVersion = `bun@${stdout.trim()}`;
+      try {
+        const { stdout } = await execPromise(`${packageManager} --version`);
+        packageManagerVersion = `${packageManager}@${stdout.trim()}`;
+      } catch (error) {
+        console.warn(
+          chalk.yellow(
+            `⚠️ Couldn't detect ${packageManager} version. Continuing without version info.`
+          )
+        );
       }
 
       packageJson.name = name;
@@ -149,19 +178,53 @@ program
         JSON.stringify(packageJson, null, 2),
         "utf-8"
       );
+      console.log(chalk.green(`✅ Updated package.json with project settings`));
 
       console.log(
-        chalk.cyan(`Installing dependencies with ${packageManager}...`)
+        chalk.cyan(
+          `📦 Installing dependencies with ${chalk.bold(packageManager)}...`
+        )
       );
-      await execPromise(`cd ${targetDir} && ${packageManager} install`);
+      console.log(
+        chalk.yellow(
+          `This might take a few minutes depending on your internet connection...`
+        )
+      );
 
+      await executeCommand(packageManager, ["install"], targetDir);
+      console.log(chalk.green(`✅ Dependencies installed successfully`));
+
+      console.log(chalk.cyan(`🧹 Cleaning up unnecessary files...`));
       fs.rmSync(path.join(name, ".git"), { recursive: true, force: true });
+      try {
+        fs.rmSync(path.join(name, "templates"), {
+          recursive: true,
+          force: true,
+        });
+      } catch (error) {
+        // Ignoriere Fehler, falls der templates-Ordner nicht existiert
+      }
+      console.log(chalk.green(`✅ Cleanup completed`));
 
-      await execPromise(`cd ${name} && git init`);
+      console.log(chalk.cyan(`🔄 Setting up git repository...`));
+      await executeCommand("git", ["init"], name);
+      await execPromise(`git add . && git commit -m "Initial commit"`, {
+        cwd: name,
+      });
+      console.log(chalk.green(`✅ Git repository initialized`));
 
-      console.log(chalk.green("Setup complete!"));
+      console.log("\n" + chalk.green.bold("✅ Setup complete!"));
+      console.log(
+        chalk.cyan(
+          `\n📁 Your new project is ready in the '${chalk.bold(name)}' folder`
+        )
+      );
+      console.log(chalk.cyan(`🚀 To get started, run:`));
+      console.log(chalk.white(`  cd ${name}`));
+      console.log(chalk.white(`  ${packageManager} dev\n`));
     } catch (error) {
-      console.error(chalk.red("An error occurred during setup:"), error);
+      console.error(chalk.red("❌ An error occurred during setup:"), error);
+      process.exit(1);
     }
   });
 

@@ -1,6 +1,6 @@
 {
   "name": "create-beluga-app",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "CLI tool to create a new beluga stack 2025 app",
   "type": "module",
   "main": "src/index.mjs",
@@ -29,8 +29,8 @@
   "license": "MIT",
   "dependencies": {
     "chalk": "^4.1.2",
-    "commander": "^9.0.0",
+    "commander": "^9.5.0",
     "figlet": "^1.8.0",
-    "inquirer": "^8.2.4"
+    "inquirer": "^8.2.6"
   }
 }

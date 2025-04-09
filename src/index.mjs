@@ -2,6 +2,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import figlet from "figlet";
 import inquirer from "inquirer";
+import { spawn } from "child_process";
 import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
@@ -10,12 +11,35 @@ import * as path from "path";
 const execPromise = promisify(exec);
 const program = new Command();
 
-// Promisify figlet.text für bessere Async-Handhabung
 const figletPromise = (text, options) => {
   return new Promise((resolve, reject) => {
     figlet.text(text, options, (err, data) => {
       if (err) reject(err);
       else resolve(data);
+    });
+  });
+};
+
+const executeCommand = (command, args, cwd) => {
+  return new Promise((resolve, reject) => {
+    console.log(chalk.dim(`$ ${command} ${args.join(" ")}`));
+
+    const childProcess = spawn(command, args, {
+      cwd,
+      stdio: "inherit",
+      shell: true,
+    });
+
+    childProcess.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Command failed with exit code ${code}`));
+      }
+    });
+
+    childProcess.on("error", (error) => {
+      reject(error);
     });
   });
 };
@@ -85,9 +109,11 @@ program
       console.log(
         chalk.cyan(`📥 Cloning the repository from ${chalk.bold(repoUrl)}...`)
       );
-      await execPromise(`git clone ${repoUrl} ${name}`);
+      await executeCommand("git", ["clone", repoUrl, name], process.cwd());
+      console.log(chalk.green(`✅ Repository cloned successfully`));
 
       if (appType !== "beluga-stack-one") {
+        console.log(chalk.cyan(`🔄 Processing template files...`));
         // Lösche alle Dateien auf der Root-Ebene außer dem templates-Ordner
         const rootFiles = fs.readdirSync(name);
         for (const file of rootFiles) {
@@ -113,6 +139,7 @@ program
         console.log(chalk.cyan(`📋 Setting up template structure...`));
         fs.cpSync(templateDir, targetDir, { recursive: true });
       }
+      console.log(chalk.green(`✅ Template structure set up successfully`));
 
       const packageJsonPath = path.join(name, "package.json");
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
@@ -151,22 +178,40 @@ program
         JSON.stringify(packageJson, null, 2),
         "utf-8"
       );
+      console.log(chalk.green(`✅ Updated package.json with project settings`));
 
       console.log(
         chalk.cyan(
           `📦 Installing dependencies with ${chalk.bold(packageManager)}...`
         )
       );
-      await execPromise(`cd ${targetDir} && ${packageManager} install`);
+      console.log(
+        chalk.yellow(
+          `This might take a few minutes depending on your internet connection...`
+        )
+      );
+
+      await executeCommand(packageManager, ["install"], targetDir);
+      console.log(chalk.green(`✅ Dependencies installed successfully`));
 
       console.log(chalk.cyan(`🧹 Cleaning up unnecessary files...`));
       fs.rmSync(path.join(name, ".git"), { recursive: true, force: true });
-      fs.rmSync(path.join(name, "templates"), { recursive: true, force: true });
+      try {
+        fs.rmSync(path.join(name, "templates"), {
+          recursive: true,
+          force: true,
+        });
+      } catch (error) {
+        // Ignoriere Fehler, falls der templates-Ordner nicht existiert
+      }
+      console.log(chalk.green(`✅ Cleanup completed`));
 
       console.log(chalk.cyan(`🔄 Setting up git repository...`));
-      await execPromise(
-        `cd ${name} && git init && git add . && git commit -m "Initial commit"`
-      );
+      await executeCommand("git", ["init"], name);
+      await execPromise(`git add . && git commit -m "Initial commit"`, {
+        cwd: name,
+      });
+      console.log(chalk.green(`✅ Git repository initialized`));
 
       console.log("\n" + chalk.green.bold("✅ Setup complete!"));
       console.log(

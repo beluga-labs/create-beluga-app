@@ -10,26 +10,15 @@ import * as path from "path";
 const execPromise = promisify(exec);
 const program = new Command();
 
-const text = "beluga stack";
-
-figlet.text(
-  text,
-  {
-    font: "Slant",
-    horizontalLayout: "default",
-    verticalLayout: "default",
-    width: 80,
-    whitespaceBreak: false,
-  },
-  function (err, data) {
-    if (err) {
-      console.log("Something went wrong...");
-      console.dir(err);
-      return;
-    }
-    console.log(data);
-  }
-);
+// Promisify figlet.text für bessere Async-Handhabung
+const figletPromise = (text, options) => {
+  return new Promise((resolve, reject) => {
+    figlet.text(text, options, (err, data) => {
+      if (err) reject(err);
+      else resolve(data);
+    });
+  });
+};
 
 program
   .version("0.2.3")
@@ -37,15 +26,28 @@ program
   .argument("<name>", "Project name")
   .action(async (name) => {
     try {
-      console.log(chalk.green(`Creating a new project called ${name}`));
+      // Banner vor allem anderen anzeigen
+      const banner = await figletPromise("beluga stack", {
+        font: "Slant",
+        horizontalLayout: "default",
+        verticalLayout: "default",
+        width: 80,
+        whitespaceBreak: false,
+      });
+
+      console.log(banner);
+      console.log(chalk.cyan("✨ Welcome to Beluga Stack CLI ✨"));
+      console.log(
+        chalk.green(`🚀 Creating a new project called ${chalk.bold(name)}`)
+      );
 
       const { appType } = await inquirer.prompt([
         {
           type: "list",
           name: "appType",
-          message: "Which type of app would you like to create?",
+          message: "📋 Which type of app would you like to create?",
           choices: [
-            { name: "beluga stack ONE", value: "beluga-stack-one" },
+            { name: "Beluga Stack ONE", value: "beluga-stack-one" },
             // coming soon
             // { name: "NextJS", value: "nextjs" },
             // { name: "Vite", value: "vite" },
@@ -63,7 +65,7 @@ program
           {
             type: "list",
             name: "cmsOption",
-            message: "Would you like to include Payload CMS?",
+            message: "🔧 Would you like to include Payload CMS?",
             choices: [
               { name: "With Payload CMS", value: "nextjs-payload" },
               { name: "Without Payload CMS", value: "nextjs" },
@@ -80,7 +82,9 @@ program
         targetDir = name; // Kopiere den Inhalt direkt ins Root-Verzeichnis
       }
 
-      console.log(chalk.cyan(`Cloning the repository from ${repoUrl}...`));
+      console.log(
+        chalk.cyan(`📥 Cloning the repository from ${chalk.bold(repoUrl)}...`)
+      );
       await execPromise(`git clone ${repoUrl} ${name}`);
 
       if (appType !== "beluga-stack-one") {
@@ -106,6 +110,7 @@ program
           force: true,
         });
       } else {
+        console.log(chalk.cyan(`📋 Setting up template structure...`));
         fs.cpSync(templateDir, targetDir, { recursive: true });
       }
 
@@ -116,7 +121,7 @@ program
         {
           type: "list",
           name: "packageManager",
-          message: "Which package manager would you like to use?",
+          message: "📦 Which package manager would you like to use?",
           choices: [
             { name: "pnpm", value: "pnpm" },
             { name: "npm", value: "npm" },
@@ -128,18 +133,15 @@ program
 
       // Ermitteln der Version des Paketmanagers
       let packageManagerVersion = "";
-      if (packageManager === "pnpm") {
-        const { stdout } = await execPromise("pnpm --version");
-        packageManagerVersion = `pnpm@${stdout.trim()}`;
-      } else if (packageManager === "npm") {
-        const { stdout } = await execPromise("npm --version");
-        packageManagerVersion = `npm@${stdout.trim()}`;
-      } else if (packageManager === "yarn") {
-        const { stdout } = await execPromise("yarn --version");
-        packageManagerVersion = `yarn@${stdout.trim()}`;
-      } else if (packageManager === "bun") {
-        const { stdout } = await execPromise("bun --version");
-        packageManagerVersion = `bun@${stdout.trim()}`;
+      try {
+        const { stdout } = await execPromise(`${packageManager} --version`);
+        packageManagerVersion = `${packageManager}@${stdout.trim()}`;
+      } catch (error) {
+        console.warn(
+          chalk.yellow(
+            `⚠️ Couldn't detect ${packageManager} version. Continuing without version info.`
+          )
+        );
       }
 
       packageJson.name = name;
@@ -151,17 +153,33 @@ program
       );
 
       console.log(
-        chalk.cyan(`Installing dependencies with ${packageManager}...`)
+        chalk.cyan(
+          `📦 Installing dependencies with ${chalk.bold(packageManager)}...`
+        )
       );
       await execPromise(`cd ${targetDir} && ${packageManager} install`);
 
+      console.log(chalk.cyan(`🧹 Cleaning up unnecessary files...`));
       fs.rmSync(path.join(name, ".git"), { recursive: true, force: true });
+      fs.rmSync(path.join(name, "templates"), { recursive: true, force: true });
 
-      await execPromise(`cd ${name} && git init`);
+      console.log(chalk.cyan(`🔄 Setting up git repository...`));
+      await execPromise(
+        `cd ${name} && git init && git add . && git commit -m "Initial commit"`
+      );
 
-      console.log(chalk.green("Setup complete!"));
+      console.log("\n" + chalk.green.bold("✅ Setup complete!"));
+      console.log(
+        chalk.cyan(
+          `\n📁 Your new project is ready in the '${chalk.bold(name)}' folder`
+        )
+      );
+      console.log(chalk.cyan(`🚀 To get started, run:`));
+      console.log(chalk.white(`  cd ${name}`));
+      console.log(chalk.white(`  ${packageManager} dev\n`));
     } catch (error) {
-      console.error(chalk.red("An error occurred during setup:"), error);
+      console.error(chalk.red("❌ An error occurred during setup:"), error);
+      process.exit(1);
     }
   });
 

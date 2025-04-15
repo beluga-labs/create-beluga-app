@@ -8,7 +8,9 @@
     "create-beluga-app": "./bin/create-beluga-app"
   },
   "scripts": {
-    "start": "node src/index.mjs"
+    "start": "node src/index.mjs",
+		"format": "prettier --write \"**/*.{ts,tsx,md}\"",
+		"format-watch": "onchange \"**/*.{ts,tsx,md}\" -- prettier --write --ignore-unknown {{changed}}"
   },
   "repository": {
     "type": "git",
@@ -30,7 +32,10 @@
   "dependencies": {
     "chalk": "^4.1.2",
     "commander": "^9.5.0",
-    "figlet": "^1.8.0",
+    "figlet": "^1.8.1",
     "inquirer": "^8.2.6"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
   }
 }

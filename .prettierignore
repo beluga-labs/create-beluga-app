@@ -1,0 +1,15 @@
+# Ignore artifacts:
+build
+dist
+node_modules
+public
+vendor
+.next
+.turbo
+.vscode
+
+# Payload
+payload.config.ts
+payload-types.ts
+importMap.js
+(payload)

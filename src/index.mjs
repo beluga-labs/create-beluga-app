@@ -51,7 +51,7 @@ const templateRegistry = {
 };
 
 program
-    .version('0.2.3')
+    .version('0.3.0')
     .description('Create a new beluga stack app')
     .argument('<name>', 'Project name')
     .action(async (name) => {

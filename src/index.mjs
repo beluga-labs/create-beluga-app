@@ -99,25 +99,25 @@ program
             let repoUrl;
             let templateDir;
             let targetDir;
+            let cmsOption;
 
             if (appType === 'beluga-stack-one') {
-                const { cmsOption } = await inquirer.prompt([
+                const { cmsOption: selectedCmsOption } = await inquirer.prompt([
                     {
                         type: 'list',
                         name: 'cmsOption',
                         message: '🔧 Would you like to include Payload CMS?',
                         choices: [
+                            { name: 'NextJS', value: 'nextjs' },
                             {
-                                name: 'With Payload CMS',
+                                name: 'NextJS with Payload CMS',
                                 value: 'nextjs-payload'
-                            },
-                            { name: 'Without Payload CMS', value: 'nextjs' }
+                            }
                         ]
                     }
                 ]);
-
+                cmsOption = selectedCmsOption;
                 repoUrl = 'https://github.com/beluga-labs/beluga-stack-ONE';
-                templateDir = path.join(name, 'templates', cmsOption);
                 targetDir = path.join(name, 'apps', 'web');
             } else {
                 repoUrl = 'https://github.com/beluga-labs/beluga-templates';
@@ -166,7 +166,33 @@ program
                 });
             } else {
                 console.log(chalk.cyan(`📋 Setting up template structure...`));
-                fs.cpSync(templateDir, targetDir, { recursive: true });
+
+                // Handle the apps in the apps directory
+                const appsDir = path.join(name, 'apps');
+                const selectedApp = cmsOption;
+                const nonSelectedApp = selectedApp === 'nextjs-payload' ? 'nextjs' : 'nextjs-payload';
+
+                // Delete the non-selected app
+                fs.rmSync(path.join(appsDir, nonSelectedApp), {
+                    recursive: true,
+                    force: true
+                });
+
+                // Rename the selected app to web
+                fs.renameSync(
+                    path.join(appsDir, selectedApp),
+                    targetDir
+                );
+
+                // Update package.json in the web app
+                const webPackageJsonPath = path.join(targetDir, 'package.json');
+                const webPackageJson = JSON.parse(fs.readFileSync(webPackageJsonPath, 'utf-8'));
+                webPackageJson.name = 'web';
+                fs.writeFileSync(
+                    webPackageJsonPath,
+                    JSON.stringify(webPackageJson, null, 2),
+                    'utf-8'
+                );
             }
             console.log(
                 chalk.green(`✅ Template structure set up successfully`)
